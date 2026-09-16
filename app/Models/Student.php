@@ -15,7 +15,8 @@ class Student extends Model
         'program',
         'gender',
         'birthday',
-        'yr_level'
+        'yr_level',
+        'status',
     ];
     protected $casts = [
         'birthday' => 'date',

@@ -1,6 +1,7 @@
 import { Head, router, useForm, usePage } from '@inertiajs/react';
 import {
     Calendar,
+    CheckCircle2,
     ChevronLeft,
     ChevronRight,
     GraduationCap,
@@ -46,6 +47,7 @@ interface Student {
     gender: string;
     birthday: string;
     yr_level: string;
+    status?: 'active' | 'inactive' | 'graduated';
     age?: number;
     created_at?: string;
     updated_at?: string;
@@ -75,8 +77,15 @@ interface Props {
     filters: {
         search?: string;
         program?: string;
+        status?: string;
     };
     programs: string[];
+    statusCounts?: {
+        all: number;
+        active: number;
+        inactive: number;
+        graduated: number;
+    };
 }
 
 const PROGRAM_OPTIONS = ['BSIT', 'BSCS', 'BSIS'];
@@ -91,12 +100,23 @@ const YEAR_LEVEL_OPTIONS = [
     { label: '3rd Year', value: '3' },
     { label: '4th Year', value: '4' },
 ];
+const STATUS_OPTIONS = [
+    { label: 'Active', value: 'active' },
+    { label: 'Inactive', value: 'inactive' },
+    { label: 'Graduated', value: 'graduated' },
+];
 
-export default function StudentsIndex({ students, filters, programs }: Props) {
+export default function StudentsIndex({
+    students,
+    filters,
+    programs,
+    statusCounts = { all: 0, active: 0, inactive: 0, graduated: 0 },
+}: Props) {
     const { flash } = usePage<{ flash?: { success?: string; error?: string } }>().props;
 
     const [searchQuery, setSearchQuery] = useState(filters.search || '');
     const [selectedProgram, setSelectedProgram] = useState(filters.program || 'all');
+    const [selectedStatus, setSelectedStatus] = useState(filters.status || 'all');
 
     // Dialog states
     const [isCreateOpen, setIsCreateOpen] = useState(false);
@@ -123,6 +143,7 @@ export default function StudentsIndex({ students, filters, programs }: Props) {
         gender: 'female',
         birthday: '',
         yr_level: '1',
+        status: 'active',
     });
 
     // Edit form
@@ -134,6 +155,7 @@ export default function StudentsIndex({ students, filters, programs }: Props) {
         gender: 'female',
         birthday: '',
         yr_level: '1',
+        status: 'active',
     });
 
     // Delete form
@@ -146,6 +168,20 @@ export default function StudentsIndex({ students, filters, programs }: Props) {
             {
                 search: searchQuery || undefined,
                 program: selectedProgram === 'all' ? undefined : selectedProgram,
+                status: selectedStatus === 'all' ? undefined : selectedStatus,
+            },
+            { preserveState: true, replace: true }
+        );
+    };
+
+    const handleStatusTabChange = (statusVal: string) => {
+        setSelectedStatus(statusVal);
+        router.get(
+            '/students',
+            {
+                search: searchQuery || undefined,
+                program: selectedProgram === 'all' ? undefined : selectedProgram,
+                status: statusVal === 'all' ? undefined : statusVal,
             },
             { preserveState: true, replace: true }
         );
@@ -154,6 +190,7 @@ export default function StudentsIndex({ students, filters, programs }: Props) {
     const handleClearFilters = () => {
         setSearchQuery('');
         setSelectedProgram('all');
+        setSelectedStatus('all');
         router.get('/students', {}, { preserveState: true, replace: true });
     };
 
@@ -168,6 +205,7 @@ export default function StudentsIndex({ students, filters, programs }: Props) {
             gender: student.gender,
             birthday: bday,
             yr_level: String(student.yr_level),
+            status: student.status || 'active',
         });
         editForm.clearErrors();
         setIsEditOpen(true);
@@ -241,6 +279,34 @@ export default function StudentsIndex({ students, filters, programs }: Props) {
         }
     };
 
+    // Status Badge Component
+    const getStatusBadge = (status?: string) => {
+        switch (status) {
+            case 'inactive':
+                return (
+                    <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-xs font-medium bg-amber-500/15 text-amber-600 dark:text-amber-400 border border-amber-500/20">
+                        <span className="size-1.5 rounded-full bg-amber-500" />
+                        Inactive
+                    </span>
+                );
+            case 'graduated':
+                return (
+                    <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-xs font-medium bg-purple-500/15 text-purple-600 dark:text-purple-400 border border-purple-500/20">
+                        <GraduationCap className="size-3 text-purple-500" />
+                        Graduated
+                    </span>
+                );
+            case 'active':
+            default:
+                return (
+                    <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-xs font-medium bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
+                        <span className="size-1.5 rounded-full bg-emerald-500" />
+                        Active
+                    </span>
+                );
+        }
+    };
+
     return (
         <>
             <Head title="Students Management" />
@@ -254,7 +320,7 @@ export default function StudentsIndex({ students, filters, programs }: Props) {
                             <h1 className="text-2xl font-bold tracking-tight">Students</h1>
                         </div>
                         <p className="text-sm text-muted-foreground mt-1">
-                            Manage student records, search, filter, and perform CRUD operations.
+                            Manage student records, track enrollment statuses, search, and perform CRUD operations.
                         </p>
                     </div>
                     <Button
@@ -268,6 +334,41 @@ export default function StudentsIndex({ students, filters, programs }: Props) {
                         <Plus className="size-4" />
                         Add Student
                     </Button>
+                </div>
+
+                {/* Status Tabs Navigation */}
+                <div className="flex flex-wrap gap-2">
+                    {[
+                        { key: 'all', label: 'All Students', count: statusCounts.all },
+                        { key: 'active', label: 'Active', count: statusCounts.active, color: 'text-emerald-500' },
+                        { key: 'inactive', label: 'Inactive', count: statusCounts.inactive, color: 'text-amber-500' },
+                        { key: 'graduated', label: 'Graduated', count: statusCounts.graduated, color: 'text-purple-500' },
+                    ].map((tab) => {
+                        const isActive = selectedStatus === tab.key;
+                        return (
+                            <button
+                                key={tab.key}
+                                type="button"
+                                onClick={() => handleStatusTabChange(tab.key)}
+                                className={`flex items-center gap-2 px-3.5 py-1.5 rounded-lg text-xs font-medium transition-colors border ${
+                                    isActive
+                                        ? 'bg-primary text-primary-foreground border-primary shadow-xs'
+                                        : 'bg-card text-muted-foreground hover:text-foreground hover:bg-muted/50 border-sidebar-border'
+                                }`}
+                            >
+                                <span>{tab.label}</span>
+                                <span
+                                    className={`px-1.5 py-0.2 rounded-full text-[11px] font-mono ${
+                                        isActive
+                                            ? 'bg-primary-foreground/20 text-primary-foreground'
+                                            : 'bg-muted text-foreground'
+                                    }`}
+                                >
+                                    {tab.count}
+                                </span>
+                            </button>
+                        );
+                    })}
                 </div>
 
                 {/* Search & Filter Toolbar */}
@@ -294,6 +395,7 @@ export default function StudentsIndex({ students, filters, programs }: Props) {
                                             '/students',
                                             {
                                                 program: selectedProgram === 'all' ? undefined : selectedProgram,
+                                                status: selectedStatus === 'all' ? undefined : selectedStatus,
                                             },
                                             { preserveState: true, replace: true }
                                         );
@@ -319,12 +421,13 @@ export default function StudentsIndex({ students, filters, programs }: Props) {
                                     {
                                         search: searchQuery || undefined,
                                         program: val === 'all' ? undefined : val,
+                                        status: selectedStatus === 'all' ? undefined : selectedStatus,
                                     },
                                     { preserveState: true, replace: true }
                                 );
                             }}
                         >
-                            <SelectTrigger className="w-[150px]">
+                            <SelectTrigger className="w-[140px]">
                                 <SelectValue placeholder="All Programs" />
                             </SelectTrigger>
                             <SelectContent>
@@ -337,7 +440,7 @@ export default function StudentsIndex({ students, filters, programs }: Props) {
                             </SelectContent>
                         </Select>
 
-                        {(searchQuery || selectedProgram !== 'all') && (
+                        {(searchQuery || selectedProgram !== 'all' || selectedStatus !== 'all') && (
                             <Button
                                 variant="ghost"
                                 size="sm"
@@ -360,6 +463,7 @@ export default function StudentsIndex({ students, filters, programs }: Props) {
                                     <th className="px-4 py-3.5">Name</th>
                                     <th className="px-4 py-3.5">Email</th>
                                     <th className="px-4 py-3.5">Program</th>
+                                    <th className="px-4 py-3.5">Status</th>
                                     <th className="px-4 py-3.5">Gender</th>
                                     <th className="px-4 py-3.5">Birthday / Age</th>
                                     <th className="px-4 py-3.5">Year Level</th>
@@ -369,16 +473,16 @@ export default function StudentsIndex({ students, filters, programs }: Props) {
                             <tbody className="divide-y divide-sidebar-border/60">
                                 {students.data.length === 0 ? (
                                     <tr>
-                                        <td colSpan={8} className="text-center py-12 text-muted-foreground">
+                                        <td colSpan={9} className="text-center py-12 text-muted-foreground">
                                             <div className="flex flex-col items-center justify-center gap-3">
                                                 <GraduationCap className="size-10 opacity-40" />
                                                 <p className="text-base font-medium">No students found</p>
                                                 <p className="text-xs max-w-sm">
-                                                    {searchQuery || selectedProgram !== 'all'
+                                                    {searchQuery || selectedProgram !== 'all' || selectedStatus !== 'all'
                                                         ? 'Try clearing your search query or adjusting your filters.'
                                                         : 'Get started by adding your first student.'}
                                                 </p>
-                                                {(searchQuery || selectedProgram !== 'all') && (
+                                                {(searchQuery || selectedProgram !== 'all' || selectedStatus !== 'all') && (
                                                     <Button
                                                         variant="outline"
                                                         size="sm"
@@ -419,6 +523,9 @@ export default function StudentsIndex({ students, filters, programs }: Props) {
                                             </td>
                                             <td className="px-4 py-3.5">
                                                 {getProgramBadge(student.program)}
+                                            </td>
+                                            <td className="px-4 py-3.5 whitespace-nowrap">
+                                                {getStatusBadge(student.status)}
                                             </td>
                                             <td className="px-4 py-3.5 capitalize text-muted-foreground">
                                                 {student.gender}
@@ -598,6 +705,30 @@ export default function StudentsIndex({ students, filters, programs }: Props) {
                                 </div>
 
                                 <div className="space-y-1.5">
+                                    <Label htmlFor="create_status">Status</Label>
+                                    <Select
+                                        value={createForm.data.status}
+                                        onValueChange={(val) => createForm.setData('status', val)}
+                                    >
+                                        <SelectTrigger id="create_status">
+                                            <SelectValue placeholder="Select Status" />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            {STATUS_OPTIONS.map((st) => (
+                                                <SelectItem key={st.value} value={st.value}>
+                                                    {st.label}
+                                                </SelectItem>
+                                            ))}
+                                        </SelectContent>
+                                    </Select>
+                                    {createForm.errors.status && (
+                                        <p className="text-xs text-destructive">{createForm.errors.status}</p>
+                                    )}
+                                </div>
+                            </div>
+
+                            <div className="grid grid-cols-2 gap-3">
+                                <div className="space-y-1.5">
                                     <Label htmlFor="create_gender">Gender</Label>
                                     <Select
                                         value={createForm.data.gender}
@@ -616,22 +747,6 @@ export default function StudentsIndex({ students, filters, programs }: Props) {
                                     </Select>
                                     {createForm.errors.gender && (
                                         <p className="text-xs text-destructive">{createForm.errors.gender}</p>
-                                    )}
-                                </div>
-                            </div>
-
-                            <div className="grid grid-cols-2 gap-3">
-                                <div className="space-y-1.5">
-                                    <Label htmlFor="create_birthday">Birthday</Label>
-                                    <Input
-                                        id="create_birthday"
-                                        type="date"
-                                        value={createForm.data.birthday}
-                                        onChange={(e) => createForm.setData('birthday', e.target.value)}
-                                        required
-                                    />
-                                    {createForm.errors.birthday && (
-                                        <p className="text-xs text-destructive">{createForm.errors.birthday}</p>
                                     )}
                                 </div>
 
@@ -656,6 +771,20 @@ export default function StudentsIndex({ students, filters, programs }: Props) {
                                         <p className="text-xs text-destructive">{createForm.errors.yr_level}</p>
                                     )}
                                 </div>
+                            </div>
+
+                            <div className="space-y-1.5">
+                                <Label htmlFor="create_birthday">Birthday</Label>
+                                <Input
+                                    id="create_birthday"
+                                    type="date"
+                                    value={createForm.data.birthday}
+                                    onChange={(e) => createForm.setData('birthday', e.target.value)}
+                                    required
+                                />
+                                {createForm.errors.birthday && (
+                                    <p className="text-xs text-destructive">{createForm.errors.birthday}</p>
+                                )}
                             </div>
                         </div>
 
@@ -756,6 +885,30 @@ export default function StudentsIndex({ students, filters, programs }: Props) {
                                 </div>
 
                                 <div className="space-y-1.5">
+                                    <Label htmlFor="edit_status">Status</Label>
+                                    <Select
+                                        value={editForm.data.status}
+                                        onValueChange={(val) => editForm.setData('status', val)}
+                                    >
+                                        <SelectTrigger id="edit_status">
+                                            <SelectValue placeholder="Select Status" />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            {STATUS_OPTIONS.map((st) => (
+                                                <SelectItem key={st.value} value={st.value}>
+                                                    {st.label}
+                                                </SelectItem>
+                                            ))}
+                                        </SelectContent>
+                                    </Select>
+                                    {editForm.errors.status && (
+                                        <p className="text-xs text-destructive">{editForm.errors.status}</p>
+                                    )}
+                                </div>
+                            </div>
+
+                            <div className="grid grid-cols-2 gap-3">
+                                <div className="space-y-1.5">
                                     <Label htmlFor="edit_gender">Gender</Label>
                                     <Select
                                         value={editForm.data.gender}
@@ -774,22 +927,6 @@ export default function StudentsIndex({ students, filters, programs }: Props) {
                                     </Select>
                                     {editForm.errors.gender && (
                                         <p className="text-xs text-destructive">{editForm.errors.gender}</p>
-                                    )}
-                                </div>
-                            </div>
-
-                            <div className="grid grid-cols-2 gap-3">
-                                <div className="space-y-1.5">
-                                    <Label htmlFor="edit_birthday">Birthday</Label>
-                                    <Input
-                                        id="edit_birthday"
-                                        type="date"
-                                        value={editForm.data.birthday}
-                                        onChange={(e) => editForm.setData('birthday', e.target.value)}
-                                        required
-                                    />
-                                    {editForm.errors.birthday && (
-                                        <p className="text-xs text-destructive">{editForm.errors.birthday}</p>
                                     )}
                                 </div>
 
@@ -814,6 +951,20 @@ export default function StudentsIndex({ students, filters, programs }: Props) {
                                         <p className="text-xs text-destructive">{editForm.errors.yr_level}</p>
                                     )}
                                 </div>
+                            </div>
+
+                            <div className="space-y-1.5">
+                                <Label htmlFor="edit_birthday">Birthday</Label>
+                                <Input
+                                    id="edit_birthday"
+                                    type="date"
+                                    value={editForm.data.birthday}
+                                    onChange={(e) => editForm.setData('birthday', e.target.value)}
+                                    required
+                                />
+                                {editForm.errors.birthday && (
+                                    <p className="text-xs text-destructive">{editForm.errors.birthday}</p>
+                                )}
                             </div>
                         </div>
 
@@ -888,4 +1039,3 @@ StudentsIndex.layout = {
         },
     ],
 };
-

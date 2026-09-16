@@ -33,7 +33,8 @@ class StudentFactory extends Factory
             'birthday' => fake() 
             ->dateTimeBetween ('-25 years', '-17 years')
             ->format('Y-m-d'),
-            'yr_level' => fake() -> numberBetween(1,4),
+            'yr_level' => fake()->numberBetween(1, 4),
+            'status' => fake()->randomElement(['active', 'active', 'active', 'inactive', 'graduated']),
         ];
     }
 }

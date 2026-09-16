@@ -30,6 +30,10 @@ class StudentController extends Controller
             $query->where('program', $request->query('program'));
         }
 
+        if ($request->filled('status')) {
+            $query->where('status', $request->query('status'));
+        }
+
         // Render Inertia UI if requested from browser / Inertia
         if ($request->header('X-Inertia') || (! $request->wantsJson() && ! $request->is('api/*'))) {
             return Inertia::render('students/index', [
@@ -37,8 +41,15 @@ class StudentController extends Controller
                 'filters' => [
                     'search' => $request->query('search', ''),
                     'program' => $request->query('program', ''),
+                    'status' => $request->query('status', ''),
                 ],
                 'programs' => Student::distinct()->pluck('program')->filter()->values(),
+                'statusCounts' => [
+                    'all' => Student::count(),
+                    'active' => Student::where('status', 'active')->count(),
+                    'inactive' => Student::where('status', 'inactive')->count(),
+                    'graduated' => Student::where('status', 'graduated')->count(),
+                ],
             ]);
         }
 
@@ -71,6 +82,7 @@ class StudentController extends Controller
             'gender'     => ['required', 'string', 'max:20'],
             'birthday'   => ['required', 'date'],
             'yr_level'   => ['required', 'string', 'max:10'],
+            'status'     => ['sometimes', 'string', 'in:active,inactive,graduated'],
         ]);
 
         $student = Student::create($validated);
@@ -114,6 +126,7 @@ class StudentController extends Controller
             'gender'     => ['sometimes', 'required', 'string', 'max:20'],
             'birthday'   => ['sometimes', 'required', 'date'],
             'yr_level'   => ['sometimes', 'required', 'string', 'max:10'],
+            'status'     => ['sometimes', 'required', 'string', 'in:active,inactive,graduated'],
         ]);
 
         $student->update($validated);

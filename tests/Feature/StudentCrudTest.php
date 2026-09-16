@@ -151,5 +151,30 @@ class StudentCrudTest extends TestCase
             'id' => $student->id,
         ]);
     }
+
+    public function test_can_filter_and_update_student_status(): void
+    {
+        $active = Student::factory()->create(['status' => 'active']);
+        $graduated = Student::factory()->create(['status' => 'graduated']);
+
+        // Test filter by status
+        $response = $this->getJson(route('students.index', ['status' => 'graduated']));
+        $response->assertOk()
+            ->assertJsonCount(1)
+            ->assertJsonFragment(['id' => $graduated->id]);
+
+        // Test update status
+        $updateResponse = $this->putJson(route('students.update', $active), [
+            'status' => 'graduated',
+        ]);
+        $updateResponse->assertOk()
+            ->assertJsonPath('student.status', 'graduated');
+
+        $this->assertDatabaseHas('students', [
+            'id' => $active->id,
+            'status' => 'graduated',
+        ]);
+    }
 }
+
 

@@ -7,6 +7,8 @@ import {
     Users,
 } from 'lucide-react';
 
+import { DashboardCharts } from '@/components/dashboard-charts';
+import AppearanceToggleTab from '@/components/appearance-tabs';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { dashboard } from '@/routes';
@@ -19,18 +21,25 @@ interface Student {
     program: string;
     yr_level: string;
     birthday: string;
+    status?: string;
     age?: number;
 }
 
 interface DashboardProps {
     totalStudents?: number;
     programCounts?: Record<string, number>;
+    genderCounts?: Record<string, number>;
+    yearLevelCounts?: Record<string, number>;
+    statusCounts?: Record<string, number>;
     recentStudents?: Student[];
 }
 
 export default function Dashboard({
     totalStudents = 0,
     programCounts = {},
+    genderCounts = {},
+    yearLevelCounts = {},
+    statusCounts = {},
     recentStudents = [],
 }: DashboardProps) {
     return (
@@ -45,12 +54,15 @@ export default function Dashboard({
                             Welcome to the student management system.
                         </p>
                     </div>
-                    <Button asChild className="gap-2 shrink-0">
-                        <Link href="/students">
-                            <Plus className="size-4" />
-                            Manage Students
-                        </Link>
-                    </Button>
+                    <div className="flex flex-wrap items-center gap-3">
+                        <AppearanceToggleTab />
+                        <Button asChild className="gap-2 shrink-0">
+                            <Link href="/students">
+                                <Plus className="size-4" />
+                                Manage Students
+                            </Link>
+                        </Button>
+                    </div>
                 </div>
 
                 {/* 3 Metric Cards */}
@@ -115,6 +127,23 @@ export default function Dashboard({
                             </Link>
                         </Button>
                     </div>
+                </div>
+
+                {/* Interactive Visual Charts Section */}
+                <div className="space-y-3">
+                    <div>
+                        <h2 className="text-lg font-bold tracking-tight">Student Analytics & Visual Insights</h2>
+                        <p className="text-xs text-muted-foreground">
+                            Interactive visual breakdown of academic programs, gender ratio, year cohorts, and student statuses.
+                        </p>
+                    </div>
+                    <DashboardCharts
+                        totalStudents={totalStudents}
+                        programCounts={programCounts}
+                        genderCounts={genderCounts}
+                        yearLevelCounts={yearLevelCounts}
+                        statusCounts={statusCounts}
+                    />
                 </div>
 
                 {/* Recent Students Table Section */}
